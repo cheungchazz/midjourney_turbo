@@ -105,13 +105,13 @@ class MidJourneyModule:
         提交混合任务
 
         参数:
-            base64_data (list): 包含2到4个元素的图像的base64编码数据
+            base64_data (list): 包含2到5个元素的图像的base64编码数据
             dimensions (str): 图像比例（默认为SQUARE）
 
         返回:
             返回任务结果数据
         """
-        assert isinstance(base64_data, list) and 2 <= len(base64_data) <= 4, "base64_data should be a list with 2 to 4 items."
+        assert isinstance(base64_data, list) and 2 <= len(base64_data) <= 5, "base64_data should be a list with 2 to 5 items."
 
         url = f"{self.domain_name}/mj/submit/blend"
         headers = {"Content-Type": "application/json", "mj-api-secret": self.api_key}

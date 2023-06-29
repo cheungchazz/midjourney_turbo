@@ -255,7 +255,7 @@ class MidjourneyTurbo(Plugin):
             except (IndexError, ValueError):
                 # 如果出现错误，设置回复类型为ERROR，内容为错误提示
                 trigger = conf()['image_create_prefix'][0]
-                reply.type = ReplyType.ERROR
+                reply.type = ReplyType.TEXT
                 reply.content = f"指令不正确，请根据示例格式重新输入：{trigger} {self.blend_ins} 2\n合图数量仅限2-5张"
                 e_context['reply'] = reply
                 e_context.action = EventAction.BREAK_PASS
@@ -264,7 +264,7 @@ class MidjourneyTurbo(Plugin):
             # 检查图片数量是否在2-5张之间
             if not 2 <= num_pictures <= 5:
                 trigger = conf()['image_create_prefix'][0]
-                reply.type = ReplyType.ERROR
+                reply.type = ReplyType.TEXT
                 reply.content = f"指令不正确，请根据示例格式重新输入：{trigger} {self.blend_ins} 2\n合图数量仅限2-5张"
                 e_context['reply'] = reply
                 e_context.action = EventAction.BREAK_PASS
