@@ -29,9 +29,11 @@ from common.expired_dict import ExpiredDict
 from datetime import timedelta
 
 
-# 定义一个函数 is_chinese, 该函数接收一个字符串参数 prompt
+# 创建并返回相应类型的频道对象
 def create_channel_object():
+    # 从配置中获取频道类型
     channel_type = conf().get("channel_type")
+    # 根据频道类型创建相应的频道对象
     if channel_type in ['wechat', 'wx', 'wxy']:
         return WechatChannel()
     elif channel_type == 'wechatmp':
@@ -44,9 +46,12 @@ def create_channel_object():
         return WechatChannel()
 
 
+# 对内容进行格式化处理
 def format_content(content):
+    # 将内容中的"—"替换为"--"
     if "—" in content:
         content = content.replace("—", "--")
+    # 如果内容中包含"--"，则按"--"将内容分割为提示和命令两部分
     if "--" in content:
         prompt, commands = content.split("--", 1)
         commands = " --" + commands.strip()
@@ -56,9 +61,12 @@ def format_content(content):
     return prompt, commands
 
 
+# 根据内容生成提示信息
 def generate_prompt(content):
+    # 创建提示信息的内容
     message_content = "请根据AI生图关键词'{}'预测想要得到的画面，然后用英文拓展描述、丰富细节、添加关键词描述以适用于AI生图。描述要简短直接突出重点，请把优化后的描述直接返回，不需要多余的语言！".format(
         content)
+    # 创建一个openai聊天完成的对象，并获取返回的内容
     completion = openai.ChatCompletion.create(model=conf().get("model"), messages=[
         {"role": "user", "content": message_content}], max_tokens=300, temperature=0.8, top_p=0.9)
     prompt = completion['choices'][0]['message']['content']
@@ -66,12 +74,16 @@ def generate_prompt(content):
     return prompt
 
 
+# 将图片转换为base64编码的字符串
 def convert_base64(image):
+    # 打开图片文件
     with open(image, "rb") as image_file:
+        # 对图片内容进行base64编码
         encoded_string = base64.b64encode(image_file.read())
     return encoded_string.decode('utf-8')
 
 
+# 下载并压缩图片
 def download_and_compress_image(url, filename, quality=30):
     # 确定保存图片的目录
     directory = os.path.join(os.getcwd(), "tmp")
@@ -90,34 +102,52 @@ def download_and_compress_image(url, filename, quality=30):
     return image_path
 
 
+# 带有重试机制的发送消息
 def send_with_retry(comapp, com_reply, e_context, max_retries=3, delay=2):
+    # 尝试发送消息，如果失败则重试
     for i in range(max_retries):
         try:
+            # 尝试发送消息
             comapp.send(com_reply, e_context['context'])
             break  # 如果成功发送，就跳出循环
         except requests.exceptions.SSLError as e:
+            # 如果因为SSL错误而发送失败，记录错误并重试
             logger.error(f"Failed to send message due to SSL error: {e}. Attempt {i + 1} of {max_retries}")
             if i < max_retries - 1:  # 如果不是最后一次尝试，那么等待一段时间再重试
                 time.sleep(delay)  # 等待指定的秒数
             else:
+                # 如果尝试发送消息的次数达到了最大次数，记录错误并放弃
                 logger.error(f"Failed to send message after {max_retries} attempts. Giving up.")
 
 
-@plugins.register(name="Midjourney_Turbo", desc="使用Midjourney来画图", desire_priority=1, version="0.1",
-                  author="chazzjimel")
-class MidjourneyTurbo(Plugin):  # 定义一个 MidjourneyV2 类，继承自 Plugin
-    def __init__(self):  # 类的初始化函数
-        super().__init__()  # 调用父类的初始化函数
+# 使用装饰器注册一个名为"Midjourney_Turbo"的插件
+@plugins.register(name="Midjourney_Turbo", desc="使用Midjourney来画图", desire_priority=1, version="0.1", author="chazzjimel")
+# 定义一个名为 MidjourneyTurbo 的类，继承自 Plugin
+class MidjourneyTurbo(Plugin):
+    # 初始化类
+    def __init__(self):
+        # 调用父类的初始化方法
+        super().__init__()
         try:
-            curdir = os.path.dirname(__file__)  # 获取当前脚本的文件路径
-            config_path = os.path.join(curdir, "config.json")  # 定义配置文件的路径
-            self.params_cache = ExpiredDict(60 * 60)  # 创建一个过期字典，键值对在一小时后过期
-            if not os.path.exists(config_path):  # 如果配置文件不存在
-                logger.info('[RP] 配置文件不存在，将使用config.json.template模板')  # 输出日志信息
-                config_path = os.path.join(curdir, "config.json.template")  # 则使用模板配置文件的路径
-            with open(config_path, "r", encoding="utf-8") as f:  # 以只读模式打开配置文件
-                config = json.load(f)  # 加载 JSON 文件内容到 config 变量
+            # 获取当前文件的目录
+            curdir = os.path.dirname(__file__)
+            # 配置文件的路径
+            config_path = os.path.join(curdir, "config.json")
+            # 创建一个过期字典，有效期为1小时
+            self.params_cache = ExpiredDict(60 * 60)
+            # 如果配置文件不存在
+            if not os.path.exists(config_path):
+                # 输出日志信息，配置文件不存在，将使用模板
+                logger.info('[RP] 配置文件不存在，将使用config.json.template模板')
+                # 模板配置文件的路径
+                config_path = os.path.join(curdir, "config.json.template")
+            # 打开并读取配置文件
+            with open(config_path, "r", encoding="utf-8") as f:
+                # 加载 JSON 文件
+                config = json.load(f)
+                # 创建频道对象
                 self.comapp = create_channel_object()
+                # 获取配置文件中的各种参数
                 self.api_key = config.get("api_key", "")
                 self.domain_name = config["domain_name"]
                 self.image_ins = config.get("image_ins", "/p")
@@ -128,65 +158,110 @@ class MidjourneyTurbo(Plugin):  # 定义一个 MidjourneyV2 类，继承自 Plug
                 self.default_params = config.get("default_params", {"action": "IMAGINE:出图", "prompt": ""})
                 self.gpt_optimized = config.get("gpt_optimized", False)
                 self.complete_prompt = config.get("complete_prompt", "任务完成！")
+                # 创建 MidJourneyModule 对象
                 self.mm = MidJourneyModule(api_key=self.api_key, domain_name=self.domain_name)
+                # 如果 domain_name 为空或包含"你的域名"，则抛出异常
                 if not self.domain_name or "你的域名" in self.domain_name:
                     raise Exception("please set your Midjourney domain_name in config or environment variable.")
-            self.handlers[Event.ON_HANDLE_CONTEXT] = self.on_handle_context  # 设置事件处理函数
-            logger.info("[RP] inited")  # 输出日志信息，表示插件已初始化
+            # 设置事件处理函数
+            self.handlers[Event.ON_HANDLE_CONTEXT] = self.on_handle_context
+            # 输出日志信息，表示插件已初始化
+            logger.info("[RP] inited")
         except Exception as e:  # 捕获所有的异常
             if isinstance(e, FileNotFoundError):  # 如果是 FileNotFoundError 异常
-                logger.warn(f"[RP] init failed, config.json not found.")  # 则输出日志信息，表示配置文件未找到
+                # 输出日志信息，表示配置文件未找到
+                logger.warn(f"[RP] init failed, config.json not found.")
             else:  # 如果是其他类型的异常
-                logger.warn("[RP] init failed." + str(e))  # 则输出日志信息，表示初始化失败，并附加异常信息
-            raise e  # 抛出异常，结束程序
+                # 输出日志信息，表示初始化失败，并附加异常信息
+                logger.warn("[RP] init failed." + str(e))
+            # 抛出异常，结束程序
+            raise e
 
-    # 定义了一个事件处理方法，当插件接收到指定类型的事件时，会调用这个方法处理事件
+    # 这个方法是一个事件处理方法，当插件接收到指定类型的事件时，会调用这个方法来处理
     def on_handle_context(self, e_context: EventContext):
-        if e_context['context'].type not in [ContextType.IMAGE_CREATE, ContextType.IMAGE]:  # 如果事件的类型不是创建图片或者图片类型，则直接返回
+        # 如果事件的类型不是图片创建或图片，则直接返回，不进行后续处理
+        if e_context['context'].type not in [ContextType.IMAGE_CREATE, ContextType.IMAGE]:
             return
+        # 将图片请求内容的日志输出
         logger.info("[RP] image_query={}".format(e_context['context'].content))
-        reply = Reply()  # 创建一个回复对象
-        try:  # 异常处理
-            user_id = e_context['context']["session_id"]  # 获取会话ID
-            content = e_context['context'].content[:]  # 获取内容
-            if e_context['context'].type == ContextType.IMAGE_CREATE:  # 如果事件类型是创建图片
+        # 创建一个回复对象
+        reply = Reply()
+        try:
+            # 获取会话ID
+            user_id = e_context['context']["session_id"]
+            # 获取事件内容
+            content = e_context['context'].content[:]
+            # 如果事件类型是图片创建
+            if e_context['context'].type == ContextType.IMAGE_CREATE:
+                # 调用处理图片创建的方法
                 self.handle_image_create(e_context, user_id, content, reply)
+            # 如果用户ID存在于参数缓存中
             elif user_id in self.params_cache:
+                # 调用处理参数缓存的方法
                 self.handle_params_cache(e_context, user_id, content, reply)
+            # 设置回复内容
             e_context['reply'] = reply
-            e_context.action = EventAction.BREAK_PASS  # 事件结束后，跳过处理context的默认逻辑
+            # 设置事件动作为打断并传递，跳过处理context的默认逻辑
+            e_context.action = EventAction.BREAK_PASS
+            # 记录日志，事件动作设置为打断并传递，回复已设置
             logger.debug("Event action set to BREAK_PASS, reply set.")
-        except Exception as e:  # 处理异常情况
+        except Exception as e:  # 捕获异常
+            # 设置回复类型为错误
             reply.type = ReplyType.ERROR
+            # 设置回复内容为异常信息
             reply.content = "[RP] " + str(e)
+            # 设置回复
             e_context['reply'] = reply
+            # 记录异常日志
             logger.exception("[RP] exception: %s" % e)
+            # 设置事件动作为继续，即使发生异常，也继续进行后续处理
             e_context.action = EventAction.CONTINUE
 
     def handle_image_create(self, e_context, user_id, content, reply):
+        # 使用format_content方法格式化内容
         prompt, commands = format_content(content=content)
+
+        # 深复制default_params到params
         params = {**self.default_params}
-        if self.image_ins in prompt:  # 处理垫图，示例输入：/p prompt
+
+        # 处理垫图的情况
+        if self.image_ins in prompt:
+            # 移除图片插入标记
             prompt = prompt.replace(self.image_ins, "")
+
+            # 将params添加到用户的参数缓存中
             self.params_cache[user_id] = {'image_params': params}
+
+            # 向params中的prompt添加内容
             if params.get("prompt", ""):
                 params["prompt"] += f", {prompt}"
             else:
                 params["prompt"] += f"{prompt}"
-            logger.info("[RP] params={}".format(params))  # 记录日志
+
+            # 记录日志
+            logger.info("[RP] params={}".format(params))
+
+            # 设置回复类型为INFO，内容为提示用户发送图片的消息
             reply.type = ReplyType.INFO
             reply.content = "请发送一张图片给我"
-        elif self.blend_ins in prompt:  # 处理合图，示例输入：/b
+
+        # 处理合图的情况
+        elif self.blend_ins in prompt:
             logger.info("[RP] blend_ins prompt={}".format(prompt))
+
             try:
+                # 从用户的输入中获取需要合成的图片数量
                 num_pictures = int(prompt.split()[1])
             except (IndexError, ValueError):
+                # 如果出现错误，设置回复类型为ERROR，内容为错误提示
                 trigger = conf()['image_create_prefix'][0]
                 reply.type = ReplyType.ERROR
                 reply.content = f"指令不正确，请根据示例格式重新输入：{trigger} {self.blend_ins} 2\n合图数量仅限2-5张"
                 e_context['reply'] = reply
                 e_context.action = EventAction.BREAK_PASS
                 return
+
+            # 检查图片数量是否在2-5张之间
             if not 2 <= num_pictures <= 5:
                 trigger = conf()['image_create_prefix'][0]
                 reply.type = ReplyType.ERROR
@@ -194,20 +269,31 @@ class MidjourneyTurbo(Plugin):  # 定义一个 MidjourneyV2 类，继承自 Plug
                 e_context['reply'] = reply
                 e_context.action = EventAction.BREAK_PASS
                 return
-            # 创建一个空的base64_data列表
+
+            # 添加用户的合成参数到params_cache
             self.params_cache[user_id] = {'blend_params': params, 'num_pictures': num_pictures,
                                           'base64_data': []}
+
+            # 记录调试日志
             logger.debug(f"self.params_cache_2:{self.params_cache}")
+
+            # 向params中的prompt添加内容
             if params.get("prompt", ""):
                 params["prompt"] += f", {prompt}"
             else:
                 params["prompt"] += f"{prompt}"
-            logger.info("[RP] params={}".format(params))  # 记录日志
+
+            # 记录日志
+            logger.info("[RP] params={}".format(params))
+
+            # 设置回复类型为INFO，内容为提示用户发送指定数量的图片的消息
             reply.type = ReplyType.INFO
             reply.content = f"请直接发送{num_pictures}张图片给我"
         elif self.change_ins in prompt:  # 处理变换，示例输入：/c V/U 1-4
+            # 处理提交的UV值
             submit_uv = ' '.join(prompt.replace(self.change_ins, "").strip().split())
             logger.debug("[RP] submit_uv post_json={}".format(" ".join(submit_uv)))
+
             # 检查输入的格式是否正确
             pattern = re.compile(r'^\d+\s[VU]\d$')
             if not pattern.match(submit_uv):
@@ -218,38 +304,61 @@ class MidjourneyTurbo(Plugin):  # 定义一个 MidjourneyV2 类，继承自 Plug
                 # 解析输入的值
                 number, v_value = submit_uv.split()
                 logger.debug("Parsed values: Number: {}, V value: {}".format(number, v_value))
+
+                # 确保UV值在U1-U4和V1-V4范围内
                 if v_value in ["U1", "U2", "U3", "U4", "V1", "V2", "V3", "V4"]:
                     simple_data = self.mm.get_simple(content=number + " " + v_value)
+
+                    # 发送任务提交消息
                     self.send_task_submission_message(e_context, messageId=simple_data["result"])
+
+                    # 获取图片的URL
                     task_data = self.mm.get_image_url(id=simple_data["result"])
                     if task_data["failReason"] is None:
+
+                        # 生成新的URL
                         if self.split_url:
                             split_url = task_data["imageUrl"].split('/')
                             new_url = '/'.join(split_url[0:3] + split_url[5:])
                         else:
                             new_url = task_data["imageUrl"]
+
+                        # 生成短URL
                         short_url = self.get_short_url(short_url_api=self.short_url_api, url=new_url)
+
+                        # 计算时间差
                         self.time_diff_start_finish_td, self.time_diff_submit_finish_td = self.get_time_diff(task_data)
+
                         logger.debug("new_url: %s" % new_url)
+
+                        # 创建一个新的回复
                         com_reply = Reply()
                         com_reply.type = ReplyType.IMAGE
+
+                        # 下载并压缩图片
                         image_path = download_and_compress_image(new_url, simple_data['result'])
                         image_storage = open(image_path, 'rb')
                         com_reply.content = image_storage
-                        # com_reply.content = task_data["imageUrl"]  # 这里涉及到地址反代的操作，正常主域名反代或没有反代则使用此默认
+
+                        # 发送回复
                         send_with_retry(self.comapp, com_reply, e_context)
+
                         logger.debug("The comapp object is an instance of: " + type(self.comapp).__name__)
                         reply.type = ReplyType.TEXT
+
+                        # 设置回复内容
                         reply.content = self.complete_prompt.format(id=simple_data["result"],
                                                                     change_ins=self.change_ins, imgurl=short_url,
                                                                     start_finish=self.time_diff_start_finish_td,
                                                                     submit_finish=self.time_diff_submit_finish_td)
+
                         logger.debug("Sent image URL and completed prompt.")
                     else:
                         reply.type = ReplyType.TEXT
                         reply.content = task_data["failReason"]
                         logger.debug("Sent failReason as reply content.")
         else:
+            # 如果没有识别到特定的指令，则执行默认的操作，生成一个新的图像
             logger.debug("Generating prompt...")
             prompt = generate_prompt(content=prompt) if self.gpt_optimized else prompt
             prompt += commands
@@ -258,13 +367,16 @@ class MidjourneyTurbo(Plugin):  # 定义一个 MidjourneyV2 类，继承自 Plug
             logger.debug("Getting imagination data...")
             imagine_data = self.mm.get_imagine(prompt=prompt)
             if isinstance(imagine_data, str):
+                # 如果返回的是错误消息，则直接发送错误消息
                 reply.type = ReplyType.TEXT
                 reply.content = f"任务提交失败，{imagine_data}"
                 logger.error(f"Received error message: {imagine_data}")
             else:
                 self.send_task_submission_message(e_context, messageId=imagine_data["result"])
                 logger.debug(f"Received imagination data: {imagine_data}")
-                time.sleep(10)
+
+                time.sleep(10)  # 等待一段时间，以确保任务已经处理完成
+
                 logger.debug("Getting image URL...")
                 task_data = self.mm.get_image_url(id=imagine_data["result"])
                 logger.debug(f"Received task data: {task_data}")
@@ -278,84 +390,120 @@ class MidjourneyTurbo(Plugin):  # 定义一个 MidjourneyV2 类，继承自 Plug
                     if task_data["failReason"] is None:
                         com_reply = Reply()
                         com_reply.type = ReplyType.IMAGE
+                        # 处理图片链接
                         if self.split_url:
                             split_url = task_data["imageUrl"].split('/')
                             new_url = '/'.join(split_url[0:3] + split_url[5:])
                         else:
                             new_url = task_data["imageUrl"]
+
+                        # 生成短链接
                         short_url = self.get_short_url(short_url_api=self.short_url_api, url=new_url)
-                        self.time_diff_start_finish_td, self.time_diff_submit_finish_td = self.get_time_diff(task_data)
+
+                        # 计算时间差
+                        self.time_diff_start_finish_td, self.time_diff_submit_finish_td = self.get_time_diff(
+                            task_data)
+
                         logger.debug("new_url: %s" % new_url)
+
+                        # 下载并压缩图片
                         image_path = download_and_compress_image(new_url, imagine_data['result'])
                         image_storage = open(image_path, 'rb')
                         com_reply.content = image_storage
-                        # com_reply.content = task_data["imageUrl"]  # 这里涉及到地址反代的操作，正常主域名反代或没有反代则使用此默认
+
+                        # 发送回复
                         send_with_retry(self.comapp, com_reply, e_context)
+
                         reply.type = ReplyType.TEXT
+
+                        # 设置回复内容
                         reply.content = self.complete_prompt.format(id=imagine_data["result"],
-                                                                    change_ins=self.change_ins, imgurl=short_url,
+                                                                    change_ins=self.change_ins,
+                                                                    imgurl=short_url,
                                                                     start_finish=self.time_diff_start_finish_td,
                                                                     submit_finish=self.time_diff_submit_finish_td)
+
                         logger.debug("Sent image URL and completed prompt.")
                     else:
                         reply.type = ReplyType.TEXT
                         reply.content = task_data["failReason"]
                         logger.debug("Sent failReason as reply content.")
+        # 设置回复内容和动作
         e_context['reply'] = reply
         e_context.action = EventAction.BREAK_PASS  # 事件结束后，跳过处理context的默认逻辑
         logger.debug("Event action set to BREAK_PASS, reply set.")
 
     def handle_params_cache(self, e_context, user_id, content, reply):
+        # 如果参数缓存中存在对应用户的图像参数
         if 'image_params' in self.params_cache[user_id]:
             cmsg = e_context['context']['msg']
             logger.debug("params_cache：%s" % self.params_cache)
             logger.debug("user_id in self.params_cache[user_id]")
             img_params = self.params_cache[user_id]
-            del self.params_cache[user_id]
+            del self.params_cache[user_id]  # 删除已使用的参数缓存
             cmsg.prepare()
+
+            # 将用户的输入转换为 base64 编码
             base64_data = convert_base64(content)
             base64_data = 'data:image/png;base64,' + base64_data
-            imagine_data = self.mm.get_imagine(prompt=img_params['image_params']["prompt"],
-                                               base64_data=base64_data)
-            if isinstance(imagine_data, str):
+
+            # 使用这些参数生成一个新的图像
+            imagine_data = self.mm.get_imagine(prompt=img_params['image_params']["prompt"], base64_data=base64_data)
+
+            if isinstance(imagine_data, str):  # 如果返回错误信息，则直接发送错误信息
                 reply.type = ReplyType.TEXT
                 reply.content = f"任务提交失败，{imagine_data}"
                 logger.error(f"Received error message: {imagine_data}")
             else:
+                # 否则，获取新的图像链接，并将其发送给用户
                 self.send_task_submission_message(e_context, messageId=imagine_data["result"])
                 logger.debug(f"Received imagination data: {imagine_data}")
-                time.sleep(10)
+
+                time.sleep(10)  # 等待一段时间以确保任务已经处理完成
+
                 logger.debug("Getting image URL...")
                 task_data = self.mm.get_image_url(id=imagine_data["result"])
                 logger.debug(f"Received task data: {task_data}")
-                if isinstance(task_data, str):
-                    # 错误信息响应
+                if isinstance(task_data, str):  # 错误信息响应
                     reply.type = ReplyType.TEXT
                     reply.content = task_data
                     logger.error(f"Received error message: {task_data}")
-                else:
-                    # 正常的JSON响应
+                else:  # 正常的JSON响应
                     if task_data["failReason"] is None:
                         com_reply = Reply()
                         com_reply.type = ReplyType.IMAGE
+
+                        # 处理图片链接
                         if self.split_url:
                             split_url = task_data["imageUrl"].split('/')
                             new_url = '/'.join(split_url[0:3] + split_url[5:])
                         else:
                             new_url = task_data["imageUrl"]
+
+                        # 生成短链接
                         short_url = self.get_short_url(short_url_api=self.short_url_api, url=new_url)
+
+                        # 计算时间差
                         self.time_diff_start_finish_td, self.time_diff_submit_finish_td = self.get_time_diff(task_data)
+
                         logger.debug("new_url: %s" % new_url)
+
+                        # 下载并压缩图片
                         image_path = download_and_compress_image(new_url, imagine_data['result'])
                         image_storage = open(image_path, 'rb')
                         com_reply.content = image_storage
-                        # com_reply.content = task_data["imageUrl"]  # 这里涉及到地址反代的操作，正常主域名反代或没有反代则使用此默认
+
+                        # 发送回复
                         send_with_retry(self.comapp, com_reply, e_context)
+
                         reply.type = ReplyType.TEXT
+
+                        # 设置回复内容
                         reply.content = self.complete_prompt.format(id=imagine_data["result"],
                                                                     change_ins=self.change_ins, imgurl=short_url,
                                                                     start_finish=self.time_diff_start_finish_td,
                                                                     submit_finish=self.time_diff_submit_finish_td)
+
                         logger.debug("Sent image URL and completed prompt.")
                     else:
                         reply.type = ReplyType.TEXT
@@ -366,29 +514,38 @@ class MidjourneyTurbo(Plugin):  # 定义一个 MidjourneyV2 类，继承自 Plug
             logger.debug("params_cache：%s" % self.params_cache)
             logger.debug("user_id in self.params_cache[user_id]")
             cmsg.prepare()
+
+            # 获取当前用户的图像参数
             img_params = self.params_cache[user_id]
+
+            # 将用户的输入转换为 base64 编码
             base64_data = convert_base64(content)
             base64_data = 'data:image/png;base64,' + base64_data
 
-            # 将新的base64数据添加到列表中
+            # 将新的 base64 数据添加到列表中
             img_params['base64_data'].append(base64_data)
+
+            # 减少待收集的图片数量
             img_params['num_pictures'] -= 1
 
             # 如果收集到足够数量的图片，调用函数并清除用户数据
             if img_params['num_pictures'] == 0:
                 blend_data = self.mm.submit_blend(img_params['base64_data'])
-                del self.params_cache[user_id]
+                del self.params_cache[user_id]  # 删除已使用的参数缓存
+
                 if isinstance(blend_data, str):
                     reply.type = ReplyType.TEXT
                     reply.content = f"任务提交失败，{blend_data}"
                     logger.error(f"Received error message: {blend_data}")
                 else:
+                    # 获取混合后的图像链接，并将其发送给用户
                     self.send_task_submission_message(e_context, messageId=blend_data["result"])
                     logger.debug(f"Received imagination data: {blend_data}")
-                    time.sleep(10)
+                    time.sleep(10)  # 等待一段时间以确保任务已经处理完成
                     logger.debug("Getting image URL...")
                     task_data = self.mm.get_image_url(id=blend_data["result"])
                     logger.debug(f"Received task data: {task_data}")
+
                     if isinstance(task_data, str):
                         # 错误信息响应
                         reply.type = ReplyType.TEXT
@@ -399,23 +556,36 @@ class MidjourneyTurbo(Plugin):  # 定义一个 MidjourneyV2 类，继承自 Plug
                         if task_data["failReason"] is None:
                             com_reply = Reply()
                             com_reply.type = ReplyType.IMAGE
+
+                            # 处理图片链接
                             if self.split_url:
                                 split_url = task_data["imageUrl"].split('/')
                                 new_url = '/'.join(split_url[0:3] + split_url[5:])
                             else:
                                 new_url = task_data["imageUrl"]
+
+                            # 生成短链接
                             short_url = self.get_short_url(short_url_api=self.short_url_api, url=new_url)
+
+                            # 计算时间差
                             self.time_diff_start_finish_td, self.time_diff_submit_finish_td = self.get_time_diff(
                                 task_data)
+
                             logger.debug("new_url: %s" % new_url)
+
+                            # 下载并压缩图片
                             image_path = download_and_compress_image(new_url, blend_data['result'])
                             image_storage = open(image_path, 'rb')
                             com_reply.content = image_storage
-                            # com_reply.content = task_data["imageUrl"]  # 这里涉及到地址反代的操作，正常主域名反代或没有反代则使用此默认
+
+                            # 发送回复
                             send_with_retry(self.comapp, com_reply, e_context)
+
                             reply.type = ReplyType.TEXT
+                            # 设置回复内容
                             reply.content = self.complete_prompt.format(id=blend_data["result"],
-                                                                        change_ins=self.change_ins, imgurl=short_url,
+                                                                        change_ins=self.change_ins,
+                                                                        imgurl=short_url,
                                                                         start_finish=self.time_diff_start_finish_td,
                                                                         submit_finish=self.time_diff_submit_finish_td)
                             logger.debug("Sent image URL and completed prompt.")
@@ -443,34 +613,39 @@ class MidjourneyTurbo(Plugin):  # 定义一个 MidjourneyV2 类，继承自 Plug
         return help_text
 
     def get_short_url(self, short_url_api, url):
+        # 检查是否提供了短网址 API
         if short_url_api != "":
-            # 发送POST请求到short_url_api
+            # 发送POST请求到短网址 API，并传入原始网址
             response = requests.post(short_url_api, json={"url": url})
             data = response.json()
-            # 拼接得到完整的URL
+            # 构建完整的短网址，将API基本URL与响应中的键值连接起来
             short_url = short_url_api + data["key"]
             return short_url
         else:
+            # 如果未提供短网址 API，则返回原始网址
             return url
 
     def get_time_diff(self, task_data):
+        # 将时间戳值转换为秒
         startTime_sec = task_data['startTime'] / 1000
         finishTime_sec = task_data['finishTime'] / 1000 if task_data['finishTime'] is not None else None
         submitTime_sec = task_data['submitTime'] / 1000
 
         if finishTime_sec is not None:
-            # 计算时间差（以秒为单位）
+            # 计算开始时间和结束时间之间的时间差（秒）
             time_diff_start_finish = finishTime_sec - startTime_sec
+            # 计算提交时间和结束时间之间的时间差（秒）
             time_diff_submit_finish = finishTime_sec - submitTime_sec
 
-            # 将时间差转换为时间间隔（timedelta）对象，以便更易于处理
+            # 将时间差转换为 timedelta 对象，以便更容易处理
             time_diff_start_finish_td = timedelta(seconds=time_diff_start_finish)
             time_diff_submit_finish_td = timedelta(seconds=time_diff_submit_finish)
 
-            # 计算时间差的秒数
+            # 获取时间差的总秒数
             time_diff_start_finish_td_sec = time_diff_start_finish_td.total_seconds()
             time_diff_submit_finish_td_sec = time_diff_submit_finish_td.total_seconds()
         else:
+            # 如果 finishTime_sec 为 None，则将时间差设置为 None
             time_diff_start_finish_td_sec = None
             time_diff_submit_finish_td_sec = None
 
@@ -482,7 +657,7 @@ class MidjourneyTurbo(Plugin):  # 定义一个 MidjourneyV2 类，继承自 Plug
         context = e_context['context']
         if context.kwargs.get('isgroup'):
             msg = context.kwargs.get('msg')
-            nickname = msg.actual_user_nickname  # 获取nickname
+            nickname = msg.actual_user_nickname  # 获取昵称
             com_reply.content = "@{name}\n☑️您的绘图任务提交成功！\n🆔ID：{id}\n⏳正在努力出图，请您耐心等待...".format(
                 name=nickname, id=messageId)
         else:

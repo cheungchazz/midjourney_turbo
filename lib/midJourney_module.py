@@ -1,6 +1,5 @@
 import json
 import time
-
 import requests
 
 from common.log import logger
@@ -11,9 +10,18 @@ class MidJourneyModule:
         self.api_key = api_key
         self.domain_name = domain_name
 
-    def get_imagine(self, prompt, base64_data=None):  # 提交出图或垫图
+    def get_imagine(self, prompt, base64_data=None):
+        """
+        提交出图或垫图任务
+
+        参数:
+            prompt (str): 提示文本
+            base64_data (str): 图像的base64编码数据 (可选)
+
+        返回:
+            如果任务提交成功，则返回任务结果数据，否则返回错误描述
+        """
         data = {"base64": base64_data, "prompt": prompt}
-        # logger.debug(f"get_imagine data:{data}")
         api_url = f"{self.domain_name}/mj/submit/imagine"
 
         headers = {
@@ -24,16 +32,24 @@ class MidJourneyModule:
         if response.status_code == 200:
             get_imagine_data = response.json()
             logger.debug("get_imagine_data: %s" % get_imagine_data)
-            # 判断code是否为1，如果不是，返回description
             if get_imagine_data.get('code') != 1:
                 return get_imagine_data.get('description')
             else:
-                return get_imagine_data  # 返回提交任务结果
+                return get_imagine_data
         else:
             logger.error("Error occurred: %s" % response.text)
             return "哦豁，出现了未知错误，请联系管理员~~~"
 
-    def get_image_url(self, id):  # 查询任务获取进度
+    def get_image_url(self, id):
+        """
+        查询任务获取进度
+
+        参数:
+            id (str): 任务ID
+
+        返回:
+            如果任务成功完成，则返回任务结果数据，否则返回错误描述
+        """
         api_url = f"{self.domain_name}/mj/task/{id}/fetch"
         headers = {
             "mj-api-secret": self.api_key
@@ -48,7 +64,6 @@ class MidJourneyModule:
                 if get_image_url_data['failReason'] is None:
                     if get_image_url_data['status'] != 'SUCCESS':
                         time.sleep(30)
-                        # 检查是否超过120秒
                         if time.time() - start_time > 300:
                             return "请求超时，请稍后再试~~~"
                     else:
@@ -59,9 +74,17 @@ class MidJourneyModule:
                 logger.error("Error occurred: %s" % response.text)
                 return "哦豁，出现了未知错误，请联系管理员~~~"
 
-    def get_simple(self, content):  # 提交变换任务
+    def get_simple(self, content):
+        """
+        提交变换任务
+
+        参数:
+            content (str): 变换内容
+
+        返回:
+            返回任务结果数据
+        """
         data = {"content": content}
-        logger.debug("data: %s" % data)
         api_url = f"{self.domain_name}/mj/submit/simple-change"
 
         headers = {
@@ -78,14 +101,23 @@ class MidJourneyModule:
             return "哦豁，出现了未知错误，请联系管理员~~~"
 
     def submit_blend(self, base64_data, dimensions="SQUARE"):
-        assert isinstance(base64_data, list) and 2 <= len(
-            base64_data) <= 4, "base64_data should be a list with 2 to 4 items."
+        """
+        提交混合任务
+
+        参数:
+            base64_data (list): 包含2到4个元素的图像的base64编码数据
+            dimensions (str): 图像比例（默认为SQUARE）
+
+        返回:
+            返回任务结果数据
+        """
+        assert isinstance(base64_data, list) and 2 <= len(base64_data) <= 4, "base64_data should be a list with 2 to 4 items."
 
         url = f"{self.domain_name}/mj/submit/blend"
         headers = {"Content-Type": "application/json", "mj-api-secret": self.api_key}
         data = {
             "base64Array": base64_data,
-            "dimensions": dimensions,  # dimensions 比例: PORTRAIT(2:3); SQUARE(1:1); LANDSCAPE(3:2)
+            "dimensions": dimensions,
             "notifyHook": "",
             "state": ""
         }
@@ -98,5 +130,4 @@ class MidJourneyModule:
         else:
             logger.error("Error occurred: %s" % response.text)
             return "哦豁，出现了未知错误，请联系管理员~~~"
-
 
