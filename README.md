@@ -64,7 +64,9 @@
 
 ![](https://github.com/chazzjimel/midjourney_turbo/blob/main/doc/images/003.png)
 
+变换
 
+![](https://github.com/chazzjimel/midjourney_turbo/blob/main/doc/images/005.png)
 
 - **请注意本插件会在项目主目录的tmp文件夹进行保存图片和压缩操作，由于插件无法在发送后自动删除，建议定期清理**
 
