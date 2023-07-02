@@ -54,22 +54,26 @@
 
 画图
 
-
+![](https://github.com/chazzjimel/midjourney_turbo/blob/main/doc/images/001.png)
 
 垫图
 
-
+![](https://github.com/chazzjimel/midjourney_turbo/blob/main/doc/images/002.png)
 
 合图
 
+![](https://github.com/chazzjimel/midjourney_turbo/blob/main/doc/images/003.png)
 
 
 
-
-- 请注意本插件会在项目主目录的tmp文件夹进行保存图片和压缩操作，由于插件无法在发送后自动删除，建议定期清理
+- **请注意本插件会在项目主目录的tmp文件夹进行保存图片和压缩操作，由于插件无法在发送后自动删除，建议定期清理**
 
 
 
 ------
 
 打赏和进星球随意，谢谢大佬~~~
+
+![](https://github.com/chazzjimel/midjourney_turbo/blob/main/doc/images/004.png)
+
+![](https://github.com/chazzjimel/midjourney_turbo/blob/main/doc/images/005.jpg)
