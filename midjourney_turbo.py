@@ -35,15 +35,15 @@ def create_channel_object():
     channel_type = conf().get("channel_type")
     # 根据频道类型创建相应的频道对象
     if channel_type in ['wechat', 'wx', 'wxy']:
-        return WechatChannel()
+        return WechatChannel(), ReplyType.IMAGE, 1
     elif channel_type == 'wechatmp':
-        return WechatMPChannel()
+        return WechatMPChannel(), ReplyType.IMAGE_URL, 2
     elif channel_type == 'wechatmp_service':
-        return WechatMPChannel()
+        return WechatMPChannel(), ReplyType.IMAGE_URL, 2
     elif channel_type == 'wechatcom_app':
-        return WechatComAppChannel()
+        return WechatComAppChannel(), ReplyType.IMAGE_URL, 2
     else:
-        return WechatChannel()
+        return WechatChannel(), ReplyType.IMAGE, 1
 
 
 # 对内容进行格式化处理
@@ -121,7 +121,8 @@ def send_with_retry(comapp, com_reply, e_context, max_retries=3, delay=2):
 
 
 # 使用装饰器注册一个名为"Midjourney_Turbo"的插件
-@plugins.register(name="Midjourney_Turbo", desc="使用Midjourney来画图", desire_priority=1, version="0.1", author="chazzjimel")
+@plugins.register(name="Midjourney_Turbo", desc="使用Midjourney来画图", desire_priority=1, version="2.0",
+                  author="chazzjimel")
 # 定义一个名为 MidjourneyTurbo 的类，继承自 Plugin
 class MidjourneyTurbo(Plugin):
     # 初始化类
@@ -146,7 +147,7 @@ class MidjourneyTurbo(Plugin):
                 # 加载 JSON 文件
                 config = json.load(f)
                 # 创建频道对象
-                self.comapp = create_channel_object()
+                self.comapp, self.type, self.num = create_channel_object()
                 # 获取配置文件中的各种参数
                 self.api_key = config.get("api_key", "")
                 self.domain_name = config["domain_name"]
@@ -333,12 +334,15 @@ class MidjourneyTurbo(Plugin):
 
                         # 创建一个新的回复
                         com_reply = Reply()
-                        com_reply.type = ReplyType.IMAGE
+                        com_reply.type = self.type
 
-                        # 下载并压缩图片
-                        image_path = download_and_compress_image(new_url, simple_data['result'])
-                        image_storage = open(image_path, 'rb')
-                        com_reply.content = image_storage
+                        if self.num != 1:
+                            com_reply.content = new_url
+                        else:
+                            # 下载并压缩图片
+                            image_path = download_and_compress_image(new_url, simple_data['result'])
+                            image_storage = open(image_path, 'rb')
+                            com_reply.content = image_storage
 
                         # 发送回复
                         send_with_retry(self.comapp, com_reply, e_context)
@@ -389,7 +393,7 @@ class MidjourneyTurbo(Plugin):
                     # 正常的JSON响应
                     if task_data["failReason"] is None:
                         com_reply = Reply()
-                        com_reply.type = ReplyType.IMAGE
+                        com_reply.type = self.type
                         # 处理图片链接
                         if self.split_url:
                             split_url = task_data["imageUrl"].split('/')
@@ -406,10 +410,13 @@ class MidjourneyTurbo(Plugin):
 
                         logger.debug("new_url: %s" % new_url)
 
-                        # 下载并压缩图片
-                        image_path = download_and_compress_image(new_url, imagine_data['result'])
-                        image_storage = open(image_path, 'rb')
-                        com_reply.content = image_storage
+                        if self.num != 1:
+                            com_reply.content = new_url
+                        else:
+                            # 下载并压缩图片
+                            image_path = download_and_compress_image(new_url, imagine_data['result'])
+                            image_storage = open(image_path, 'rb')
+                            com_reply.content = image_storage
 
                         # 发送回复
                         send_with_retry(self.comapp, com_reply, e_context)
@@ -471,7 +478,7 @@ class MidjourneyTurbo(Plugin):
                 else:  # 正常的JSON响应
                     if task_data["failReason"] is None:
                         com_reply = Reply()
-                        com_reply.type = ReplyType.IMAGE
+                        com_reply.type = self.type
 
                         # 处理图片链接
                         if self.split_url:
@@ -488,10 +495,13 @@ class MidjourneyTurbo(Plugin):
 
                         logger.debug("new_url: %s" % new_url)
 
-                        # 下载并压缩图片
-                        image_path = download_and_compress_image(new_url, imagine_data['result'])
-                        image_storage = open(image_path, 'rb')
-                        com_reply.content = image_storage
+                        if self.num != 1:
+                            com_reply.content = new_url
+                        else:
+                            # 下载并压缩图片
+                            image_path = download_and_compress_image(new_url, imagine_data['result'])
+                            image_storage = open(image_path, 'rb')
+                            com_reply.content = image_storage
 
                         # 发送回复
                         send_with_retry(self.comapp, com_reply, e_context)
@@ -555,7 +565,7 @@ class MidjourneyTurbo(Plugin):
                         # 正常的JSON响应
                         if task_data["failReason"] is None:
                             com_reply = Reply()
-                            com_reply.type = ReplyType.IMAGE
+                            com_reply.type = self.type
 
                             # 处理图片链接
                             if self.split_url:
@@ -573,10 +583,13 @@ class MidjourneyTurbo(Plugin):
 
                             logger.debug("new_url: %s" % new_url)
 
-                            # 下载并压缩图片
-                            image_path = download_and_compress_image(new_url, blend_data['result'])
-                            image_storage = open(image_path, 'rb')
-                            com_reply.content = image_storage
+                            if self.num != 1:
+                                com_reply.content = new_url
+                            else:
+                                # 下载并压缩图片
+                                image_path = download_and_compress_image(new_url, blend_data['result'])
+                                image_storage = open(image_path, 'rb')
+                                com_reply.content = image_storage
 
                             # 发送回复
                             send_with_retry(self.comapp, com_reply, e_context)
@@ -603,7 +616,7 @@ class MidjourneyTurbo(Plugin):
             # 否则，获取触发前缀
             trigger = conf()['image_create_prefix'][0]
         # 初始化帮助文本，说明利用 midjourney api 来画图
-        help_text = "使用Midjourney来画图，支持垫图、合图、变换等操作\n"
+        help_text = "\n🔥使用Midjourney来画图，支持垫图、合图、变换等操作\n"
         # 如果不需要详细说明，则直接返回帮助文本
         if not verbose:
             return help_text

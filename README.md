@@ -2,6 +2,8 @@
 
 本插件依赖主要项目[chatgpt-on-wechat](https://github.com/zhayujie/chatgpt-on-wechat),用于将画图请求转发给`Midjourney` api，插件依赖于[midjourney-proxy](https://github.com/novicezk/midjourney-proxy)提供的服务转发,具体搭建方法请参考原项目。
 
+**支持个人微信和公众号，公众号需要认证后消息通道设置为wechatmp_service使用效果最佳！**
+
 ## 使用说明
 
 ​	具体搭建方法就不细说了，没有搭建[midjourney-proxy](https://github.com/novicezk/midjourney-proxy)的无法使用本插件，配置可选内容请自行参考项目文档，支持返回原图链接和短链，建议短链和接口API都配置、如果使用了cdn反代，建议开启http鉴权。
@@ -48,4 +50,26 @@
     <画图触发词> /p <prompt>			如：画 /p 猫
 ```
 
+## 使用示例
+
+画图
+
+
+
+垫图
+
+
+
+合图
+
+
+
+
+
 - 请注意本插件会在项目主目录的tmp文件夹进行保存图片和压缩操作，由于插件无法在发送后自动删除，建议定期清理
+
+
+
+------
+
+打赏和进星球随意，谢谢大佬~~~
