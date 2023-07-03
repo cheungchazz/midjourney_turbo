@@ -74,6 +74,16 @@
 
 ------
 
+## 星球定制版
+
+![](https://github.com/chazzjimel/midjourney_turbo/blob/main/doc/images/010.png)
+
+![](https://github.com/chazzjimel/midjourney_turbo/blob/main/doc/images/011.png)
+
+![](https://github.com/chazzjimel/midjourney_turbo/blob/main/doc/images/012.png)
+
+![](https://github.com/chazzjimel/midjourney_turbo/blob/main/doc/images/013.png)
+
 打赏和进星球随意，谢谢大佬~~~
 
 ![](https://github.com/chazzjimel/midjourney_turbo/blob/main/doc/images/004.png)
