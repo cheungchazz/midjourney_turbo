@@ -6,8 +6,11 @@
 @file: midjourney_turbo.py
 """
 import base64
+import datetime
 import json
 import re
+import sqlite3
+import threading
 import time
 import openai
 import requests
@@ -121,7 +124,7 @@ def send_with_retry(comapp, com_reply, e_context, max_retries=3, delay=2):
 
 
 # 使用装饰器注册一个名为"Midjourney_Turbo"的插件
-@plugins.register(name="Midjourney_Turbo", desc="使用Midjourney来画图", desire_priority=1, version="2.0",
+@plugins.register(name="Midjourney_Turbo", desc="使用Midjourney来画图", desire_priority=1, version="3.0",
                   author="chazzjimel")
 # 定义一个名为 MidjourneyTurbo 的类，继承自 Plugin
 class MidjourneyTurbo(Plugin):
@@ -146,6 +149,13 @@ class MidjourneyTurbo(Plugin):
             with open(config_path, "r", encoding="utf-8") as f:
                 # 加载 JSON 文件
                 config = json.load(f)
+                rootdir = os.path.dirname(os.path.dirname(curdir))
+                dbdir = os.path.join(rootdir, "db")
+                if not os.path.exists(dbdir):
+                    os.mkdir(dbdir)
+                logger.info("[verify_turbo] inited")
+                user_db = os.path.join(dbdir, "user.db")
+                self.user_db = sqlite3.connect(user_db, check_same_thread=False)
                 # 创建频道对象
                 self.comapp, self.type, self.num = create_channel_object()
                 # 获取配置文件中的各种参数
@@ -158,6 +168,10 @@ class MidjourneyTurbo(Plugin):
                 self.short_url_api = config.get("short_url_api", "")
                 self.default_params = config.get("default_params", {"action": "IMAGINE:出图", "prompt": ""})
                 self.gpt_optimized = config.get("gpt_optimized", False)
+                self.trial_lock = config.get("trial_lock", 3)
+                self.lock = config.get("lock", False)
+                self.group_lock = config.get("group_lock", False)
+                self.local_data = threading.local()
                 self.complete_prompt = config.get("complete_prompt", "任务完成！")
                 # 创建 MidJourneyModule 对象
                 self.mm = MidJourneyModule(api_key=self.api_key, domain_name=self.domain_name)
@@ -192,6 +206,47 @@ class MidjourneyTurbo(Plugin):
             user_id = e_context['context']["session_id"]
             # 获取事件内容
             content = e_context['context'].content[:]
+
+            if e_context['context'].type == ContextType.IMAGE_CREATE:
+                logger.debug("收到 IMAGE_CREATE 事件.")
+                if self.lock:
+                    logger.debug("使用限制已开启.")
+                    if e_context["context"]["isgroup"]:
+                        if self.group_lock:
+                            continue_a, continue_b, remaining = self.check_and_update_usage_limit(
+                                trial_lock=self.trial_lock,
+                                user_id=user_id,
+                                db_conn=self.user_db)
+                            logger.debug(
+                                f"群聊锁已开启. continue_a={continue_a}, continue_b={continue_b}, remaining={remaining}")
+                        else:
+                            continue_a, continue_b, remaining = True, False, ""
+                            logger.debug("群聊锁未开启，直接放行.")
+                    else:
+                        continue_a, continue_b, remaining = self.check_and_update_usage_limit(
+                            trial_lock=self.trial_lock,
+                            user_id=user_id,
+                            db_conn=self.user_db)
+                        logger.debug(
+                            f"非群聊上下文. continue_a={continue_a}, continue_b={continue_b}, remaining={remaining}")
+                else:
+                    continue_a, continue_b, remaining = True, False, ""
+                    logger.debug("使用限制未开启.")
+            else:
+                continue_a, continue_b, remaining = True, False, ""
+                logger.debug("收到图像信息，继续执行.")
+
+            if continue_a and continue_b:
+                self.local_data.reminder_string = f"\n💳您的绘画试用次数剩余：{remaining}次"
+            elif not continue_a and not continue_b:
+                reply.type = ReplyType.TEXT
+                reply.content = f"⚠️提交失败，您的绘画试用次数剩余：0次 "
+                e_context['reply'] = reply
+                e_context.action = EventAction.BREAK_PASS
+                return
+            else:
+                self.local_data.reminder_string = remaining
+
             # 如果事件类型是图片创建
             if e_context['context'].type == ContextType.IMAGE_CREATE:
                 # 调用处理图片创建的方法
@@ -672,8 +727,56 @@ class MidjourneyTurbo(Plugin):
             msg = context.kwargs.get('msg')
             nickname = msg.actual_user_nickname  # 获取昵称
             com_reply.content = "@{name}\n☑️您的绘图任务提交成功！\n🆔ID：{id}\n⏳正在努力出图，请您耐心等待...".format(
-                name=nickname, id=messageId)
+                name=nickname, id=messageId) + self.local_data.reminder_string
         else:
             com_reply.content = "☑️您的绘图任务提交成功！\n🆔ID：{id}\n⏳正在努力出图，请您耐心等待...".format(
-                id=messageId)
+                id=messageId) + self.local_data.reminder_string
         self.comapp.send(com_reply, context)
+
+    def check_and_update_usage_limit(self, trial_lock, user_id, db_conn):
+        cur = db_conn.cursor()
+
+        # 确保midjourneyturbo表存在
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS midjourneyturbo
+            (UserID TEXT PRIMARY KEY, TrialCount INTEGER, TrialDate TEXT);
+        """)
+        db_conn.commit()
+
+        # 从数据库中查询用户
+        cur.execute("""
+            SELECT TrialCount, TrialDate FROM midjourneyturbo 
+            WHERE UserID = ?
+        """, (user_id,))
+        row = cur.fetchone()
+
+        # 如果用户不存在，插入一个新用户并设置试用次数和日期，然后返回True和试用次数减1
+        if row is None:
+            trial_count = trial_lock - 1  # 试用次数减1
+            cur.execute("""
+                INSERT INTO midjourneyturbo (UserID, TrialCount, TrialDate) VALUES (?, ?, ?)
+            """, (user_id, trial_count, datetime.date.today().isoformat()))  # 插入用户，并设置当前日期和试用次数
+            db_conn.commit()
+            return True, True, trial_count
+
+        # 用户存在于数据库中，检查试用次数和日期
+        trial_count = row[0] if row and row[0] is not None else trial_lock
+        trial_date = row[1] if row and row[1] is not None else None
+        today = datetime.date.today().isoformat()
+
+        if trial_count == 0 and trial_date == today:  # 今天的试用次数已经用完
+            return False, False, ""
+
+        if trial_count > 0 and trial_date == today:  # 试用次数有剩余，并且日期是今天
+            trial_count -= 1  # 减少试用次数
+        else:  # 试用次数为0或者日期不是今天
+            trial_count = trial_lock - 1  # 重置试用次数并减去1
+            trial_date = today  # 更新试用日期
+
+        cur.execute("""
+            UPDATE midjourneyturbo 
+            SET TrialCount = ?, TrialDate = ?
+            WHERE UserID = ?
+        """, (trial_count, trial_date, user_id))
+        db_conn.commit()
+        return True, True, trial_count

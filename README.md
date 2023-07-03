@@ -28,6 +28,9 @@
     "gpt_optimized": true,  	# Gpt优化画图的开关选项
     "short_url_api":"",     	# 短链API，如无短链接口无需配置，短链配置选用“Url-Shorten-Worker”项目
     "split_url":false,      	# 这里涉及到反代域名的操作，如无特殊需求保持默认即可
+    "lock":true,                # 是否开启使用次数限制
+    "group_lock":false,			# 是否开启群聊使用限制，个人和群聊同步，即个人次数满了，群聊也不行
+    "trial_lock":2,				# 使用次数的限制
     "complete_prompt": "\n\uD83E\uDD42任务完成！\n⌚\uFE0F任务耗时{start_finish},总耗时{submit_finish}\n--------------------------------\n\uD83C\uDD94任务ID:{id}\n--------------------------------\n\uD83D\uDCE7回复以下指令衍生或选图\uD83D\uDCE7\n\n画 /ins {id} V1\n画 /ins {id} V2\n画 /ins {id} V3\n画 /ins {id} V4\n画 /ins {id} U1\n画 /ins {id} U2\n画 /ins {id} U3\n画 /ins {id} U4\n\n--------------------------------\n\uD83D\uDC49V1～V4(衍生图片)\n\uD83D\uDC49U1～U4(确认选图)\n\u200D\uD83D\uDCBBTip：左上到右下依次为1234\n--------------------------------\n\uD83C\uDF20如果不出图片，请点击原图链接：\n{imgurl}"         # 画图完成提示词，注意占位符格式和变量名   
 }
 ```
