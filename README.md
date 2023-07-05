@@ -8,6 +8,14 @@
 
 ​	具体搭建方法就不细说了，没有搭建[midjourney-proxy](https://github.com/novicezk/midjourney-proxy)的无法使用本插件，配置可选内容请自行参考项目文档，支持返回原图链接和短链，建议短链和接口API都配置、如果使用了cdn反代，建议开启http鉴权。
 
+#### 使用前提
+
+1. 注册 MidJourney，创建自己的频道，参考 https://docs.midjourney.com/docs/quick-start
+2. 获取用户Token、服务器ID、频道ID：[获取方式](https://github.com/novicezk/midjourney-proxy/blob/main/docs/discord-params.md)
+3. 搭建[midjourney-proxy](https://github.com/novicezk/midjourney-proxy)，请根据项目教程部署，先完成以上两步
+4. 搭建成功后输入ip:端口号/mj，能正常打开既是部署成功
+5. 搞不定的可以联系我bot，我有空会帮忙搭建一下，或者直接付费使用我的api
+
 #### 插件安装
 
 将本项目文件下载后，重命名为“midjourney_turbo”，然后整个文件放入到chatgpt-on-wechat/plugins目录即可配合项目使用
