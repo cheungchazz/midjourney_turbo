@@ -110,5 +110,4 @@
 
 **如果本插件好用，star、请我喝可乐咖啡都行，谢谢各位大佬！**
 
-![](https://github.com/chazzjimel/newgpt_turbo/blob/main/images/yueqian.png)
-
+![](https://github.com/chazzjimel/midjourney_turbo/blob/main/doc/images/yueqian.png)
