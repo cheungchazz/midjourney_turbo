@@ -87,6 +87,14 @@
 
 ![](https://github.com/chazzjimel/midjourney_turbo/blob/main/doc/images/013.png)
 
+------
+
+由于我是一个人在瞎写，星球内的成员基本都知道我有想法一晚上才能写出一个插件，效率不咋滴，同行路上需要的是朋友不是成员，所以星球价格会随时高随时低，且当前商业化的一些功能也是星球成员提议需要的。
+
+**个人优化后的bot体验，4.0接口**（如果提示要激活码，请等我看到信息后直接开权限回复了即可）
+
+![](https://github.com/chazzjimel/newgpt_turbo/blob/main/images/070502.png)
+
 打赏和进星球随意，谢谢大佬~~~
 
 ![](https://github.com/chazzjimel/midjourney_turbo/blob/main/doc/images/004.png)
