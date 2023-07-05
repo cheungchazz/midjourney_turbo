@@ -194,17 +194,12 @@ class MidjourneyTurbo(Plugin):
 
     # 这个方法是一个事件处理方法，当插件接收到指定类型的事件时，会调用这个方法来处理
     def on_handle_context(self, e_context: EventContext):
-        # 如果事件的类型不是图片创建或图片，则直接返回，不进行后续处理
         if e_context['context'].type not in [ContextType.IMAGE_CREATE, ContextType.IMAGE]:
             return
-        # 将图片请求内容的日志输出
         logger.info("[RP] image_query={}".format(e_context['context'].content))
-        # 创建一个回复对象
         reply = Reply()
         try:
-            # 获取会话ID
             user_id = e_context['context']["session_id"]
-            # 获取事件内容
             content = e_context['context'].content[:]
 
             if e_context['context'].type == ContextType.IMAGE_CREATE:
@@ -247,30 +242,19 @@ class MidjourneyTurbo(Plugin):
             else:
                 self.local_data.reminder_string = remaining
 
-            # 如果事件类型是图片创建
             if e_context['context'].type == ContextType.IMAGE_CREATE:
-                # 调用处理图片创建的方法
                 self.handle_image_create(e_context, user_id, content, reply)
-            # 如果用户ID存在于参数缓存中
             elif user_id in self.params_cache:
-                # 调用处理参数缓存的方法
                 self.handle_params_cache(e_context, user_id, content, reply)
-            # 设置回复内容
+
             e_context['reply'] = reply
-            # 设置事件动作为打断并传递，跳过处理context的默认逻辑
             e_context.action = EventAction.BREAK_PASS
-            # 记录日志，事件动作设置为打断并传递，回复已设置
             logger.debug("Event action set to BREAK_PASS, reply set.")
-        except Exception as e:  # 捕获异常
-            # 设置回复类型为错误
+        except Exception as e:
             reply.type = ReplyType.ERROR
-            # 设置回复内容为异常信息
             reply.content = "[RP] " + str(e)
-            # 设置回复
             e_context['reply'] = reply
-            # 记录异常日志
             logger.exception("[RP] exception: %s" % e)
-            # 设置事件动作为继续，即使发生异常，也继续进行后续处理
             e_context.action = EventAction.CONTINUE
 
     def handle_image_create(self, e_context, user_id, content, reply):

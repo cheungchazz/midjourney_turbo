@@ -6,10 +6,12 @@ from common.log import logger
 
 
 class MidJourneyModule:
+    # 初始化函数，需要API密钥和域名作为参数
     def __init__(self, api_key, domain_name):
         self.api_key = api_key
         self.domain_name = domain_name
 
+    # 提交出图或垫图任务的函数
     def get_imagine(self, prompt, base64_data=None):
         """
         提交出图或垫图任务
@@ -28,18 +30,24 @@ class MidJourneyModule:
             "mj-api-secret": self.api_key
         }
 
-        response = requests.post(url=api_url, headers=headers, json=data, timeout=120.05)
-        if response.status_code == 200:
-            get_imagine_data = response.json()
-            logger.debug("get_imagine_data: %s" % get_imagine_data)
-            if get_imagine_data.get('code') != 1:
-                return get_imagine_data.get('description')
+        # 发送POST请求
+        try:
+            response = requests.post(url=api_url, headers=headers, json=data, timeout=120.05)
+            if response.status_code == 200:
+                get_imagine_data = response.json()
+                logger.debug("get_imagine_data: %s" % get_imagine_data)
+                if get_imagine_data.get('code') != 1:
+                    return get_imagine_data.get('description')
+                else:
+                    return get_imagine_data
             else:
-                return get_imagine_data
-        else:
-            logger.error("Error occurred: %s" % response.text)
+                logger.error("Error occurred: %s" % response.text)
+                return "哦豁，出现了未知错误，请联系管理员~~~"
+        except Exception as e:
+            logger.error("Error occurred: %s" % str(e))
             return "哦豁，出现了未知错误，请联系管理员~~~"
 
+    # 查询任务获取进度的函数
     def get_image_url(self, id):
         """
         查询任务获取进度
@@ -57,23 +65,28 @@ class MidJourneyModule:
 
         start_time = time.time()  # 记录开始时间
         while True:
-            response = requests.get(url=api_url, headers=headers, timeout=120.05)
-            if response.status_code == 200:
-                get_image_url_data = response.json()
-                logger.debug("get_image_url_data: %s" % get_image_url_data)
-                if get_image_url_data['failReason'] is None:
-                    if get_image_url_data['status'] != 'SUCCESS':
-                        time.sleep(30)
-                        if time.time() - start_time > 300:
-                            return "请求超时，请稍后再试~~~"
+            try:
+                # 发送GET请求
+                response = requests.get(url=api_url, headers=headers, timeout=120.05)
+                if response.status_code == 200:
+                    get_image_url_data = response.json()
+                    logger.debug("get_image_url_data: %s" % get_image_url_data)
+                    if get_image_url_data['failReason'] is None:
+                        if get_image_url_data['status'] != 'SUCCESS':
+                            time.sleep(30)
+                            if time.time() - start_time > 300:
+                                return "请求超时，请稍后再试~~~"
+                        else:
+                            return get_image_url_data
                     else:
                         return get_image_url_data
                 else:
-                    return get_image_url_data
-            else:
-                logger.error("Error occurred: %s" % response.text)
+                    logger.error("Error occurred: %s" % response.text)
+                    return "哦豁，出现了未知错误，请联系管理员~~~"
+            except Exception as e:
+                logger.error("Error occurred: %s" % str(e))
                 return "哦豁，出现了未知错误，请联系管理员~~~"
-
+    # 提交变换任务的函数
     def get_simple(self, content):
         """
         提交变换任务
@@ -91,15 +104,21 @@ class MidJourneyModule:
             "mj-api-secret": self.api_key
         }
 
-        response = requests.post(url=api_url, headers=headers, json=data, timeout=120.05)
-        if response.status_code == 200:
-            get_imagine_data = response.json()
-            logger.debug("get_imagine_data: %s" % get_imagine_data)
-            return get_imagine_data
-        else:
-            logger.error("Error occurred: %s" % response.text)
+        # 发送POST请求
+        try:
+            response = requests.post(url=api_url, headers=headers, json=data, timeout=120.05)
+            if response.status_code == 200:
+                get_imagine_data = response.json()
+                logger.debug("get_imagine_data: %s" % get_imagine_data)
+                return get_imagine_data
+            else:
+                logger.error("Error occurred: %s" % response.text)
+                return "哦豁，出现了未知错误，请联系管理员~~~"
+        except Exception as e:
+            logger.error("Error occurred: %s" % str(e))
             return "哦豁，出现了未知错误，请联系管理员~~~"
 
+    # 提交混合任务的函数
     def submit_blend(self, base64_data, dimensions="SQUARE"):
         """
         提交混合任务
@@ -122,12 +141,16 @@ class MidJourneyModule:
             "state": ""
         }
 
-        response = requests.post(url, headers=headers, data=json.dumps(data))
-        if response.status_code == 200:
-            get_imagine_data = response.json()
-            logger.debug("get_imagine_data: %s" % get_imagine_data)
-            return get_imagine_data
-        else:
-            logger.error("Error occurred: %s" % response.text)
+        # 发送POST请求
+        try:
+            response = requests.post(url, headers=headers, data=json.dumps(data))
+            if response.status_code == 200:
+                get_imagine_data = response.json()
+                logger.debug("get_imagine_data: %s" % get_imagine_data)
+                return get_imagine_data
+            else:
+                logger.error("Error occurred: %s" % response.text)
+                return "哦豁，出现了未知错误，请联系管理员~~~"
+        except Exception as e:
+            logger.error("Error occurred: %s" % str(e))
             return "哦豁，出现了未知错误，请联系管理员~~~"
-
