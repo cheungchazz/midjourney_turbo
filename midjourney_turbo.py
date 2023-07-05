@@ -124,7 +124,7 @@ def send_with_retry(comapp, com_reply, e_context, max_retries=3, delay=2):
 
 
 # 使用装饰器注册一个名为"Midjourney_Turbo"的插件
-@plugins.register(name="Midjourney_Turbo", desc="使用Midjourney来画图", desire_priority=1, version="3.0",
+@plugins.register(name="Midjourney_Turbo", desc="使用Midjourney来画图", desire_priority=1, version="3.1",
                   author="chazzjimel")
 # 定义一个名为 MidjourneyTurbo 的类，继承自 Plugin
 class MidjourneyTurbo(Plugin):
@@ -194,12 +194,17 @@ class MidjourneyTurbo(Plugin):
 
     # 这个方法是一个事件处理方法，当插件接收到指定类型的事件时，会调用这个方法来处理
     def on_handle_context(self, e_context: EventContext):
+        # 如果事件的类型不是图片创建或图片，则直接返回，不进行后续处理
         if e_context['context'].type not in [ContextType.IMAGE_CREATE, ContextType.IMAGE]:
             return
+        # 将图片请求内容的日志输出
         logger.info("[RP] image_query={}".format(e_context['context'].content))
+        # 创建一个回复对象
         reply = Reply()
         try:
+            # 获取会话ID
             user_id = e_context['context']["session_id"]
+            # 获取事件内容
             content = e_context['context'].content[:]
 
             if e_context['context'].type == ContextType.IMAGE_CREATE:
@@ -242,19 +247,30 @@ class MidjourneyTurbo(Plugin):
             else:
                 self.local_data.reminder_string = remaining
 
+            # 如果事件类型是图片创建
             if e_context['context'].type == ContextType.IMAGE_CREATE:
+                # 调用处理图片创建的方法
                 self.handle_image_create(e_context, user_id, content, reply)
+            # 如果用户ID存在于参数缓存中
             elif user_id in self.params_cache:
+                # 调用处理参数缓存的方法
                 self.handle_params_cache(e_context, user_id, content, reply)
-
+            # 设置回复内容
             e_context['reply'] = reply
+            # 设置事件动作为打断并传递，跳过处理context的默认逻辑
             e_context.action = EventAction.BREAK_PASS
+            # 记录日志，事件动作设置为打断并传递，回复已设置
             logger.debug("Event action set to BREAK_PASS, reply set.")
-        except Exception as e:
+        except Exception as e:  # 捕获异常
+            # 设置回复类型为错误
             reply.type = ReplyType.ERROR
+            # 设置回复内容为异常信息
             reply.content = "[RP] " + str(e)
+            # 设置回复
             e_context['reply'] = reply
+            # 记录异常日志
             logger.exception("[RP] exception: %s" % e)
+            # 设置事件动作为继续，即使发生异常，也继续进行后续处理
             e_context.action = EventAction.CONTINUE
 
     def handle_image_create(self, e_context, user_id, content, reply):
@@ -357,31 +373,18 @@ class MidjourneyTurbo(Plugin):
                     if task_data["failReason"] is None:
 
                         # 生成新的URL
-                        if self.split_url:
-                            split_url = task_data["imageUrl"].split('/')
-                            new_url = '/'.join(split_url[0:3] + split_url[5:])
-                        else:
-                            new_url = task_data["imageUrl"]
+                        new_url = self.generate_new_url(task_data=task_data)
 
                         # 生成短URL
-                        short_url = self.get_short_url(short_url_api=self.short_url_api, url=new_url)
+                        short_url = self.get_short_url(short_url_api=self.short_url_api, url=task_data)
 
                         # 计算时间差
-                        self.time_diff_start_finish_td, self.time_diff_submit_finish_td = self.get_time_diff(task_data)
+                        time_diff_start_finish_td, time_diff_submit_finish_td = self.get_time_diff(task_data)
 
                         logger.debug("new_url: %s" % new_url)
 
                         # 创建一个新的回复
-                        com_reply = Reply()
-                        com_reply.type = self.type
-
-                        if self.num != 1:
-                            com_reply.content = new_url
-                        else:
-                            # 下载并压缩图片
-                            image_path = download_and_compress_image(new_url, simple_data['result'])
-                            image_storage = open(image_path, 'rb')
-                            com_reply.content = image_storage
+                        com_reply = self.create_reply(new_url=new_url, data=simple_data)
 
                         # 发送回复
                         send_with_retry(self.comapp, com_reply, e_context)
@@ -392,8 +395,8 @@ class MidjourneyTurbo(Plugin):
                         # 设置回复内容
                         reply.content = self.complete_prompt.format(id=simple_data["result"],
                                                                     change_ins=self.change_ins, imgurl=short_url,
-                                                                    start_finish=self.time_diff_start_finish_td,
-                                                                    submit_finish=self.time_diff_submit_finish_td)
+                                                                    start_finish=time_diff_start_finish_td,
+                                                                    submit_finish=time_diff_submit_finish_td)
 
                         logger.debug("Sent image URL and completed prompt.")
                     else:
@@ -431,31 +434,17 @@ class MidjourneyTurbo(Plugin):
                 else:
                     # 正常的JSON响应
                     if task_data["failReason"] is None:
-                        com_reply = Reply()
-                        com_reply.type = self.type
                         # 处理图片链接
-                        if self.split_url:
-                            split_url = task_data["imageUrl"].split('/')
-                            new_url = '/'.join(split_url[0:3] + split_url[5:])
-                        else:
-                            new_url = task_data["imageUrl"]
-
+                        new_url = self.generate_new_url(task_data=task_data)
                         # 生成短链接
                         short_url = self.get_short_url(short_url_api=self.short_url_api, url=new_url)
-
                         # 计算时间差
-                        self.time_diff_start_finish_td, self.time_diff_submit_finish_td = self.get_time_diff(
+                        time_diff_start_finish_td, time_diff_submit_finish_td = self.get_time_diff(
                             task_data)
 
                         logger.debug("new_url: %s" % new_url)
 
-                        if self.num != 1:
-                            com_reply.content = new_url
-                        else:
-                            # 下载并压缩图片
-                            image_path = download_and_compress_image(new_url, imagine_data['result'])
-                            image_storage = open(image_path, 'rb')
-                            com_reply.content = image_storage
+                        com_reply = self.create_reply(new_url=new_url, data=imagine_data)
 
                         # 发送回复
                         send_with_retry(self.comapp, com_reply, e_context)
@@ -466,8 +455,8 @@ class MidjourneyTurbo(Plugin):
                         reply.content = self.complete_prompt.format(id=imagine_data["result"],
                                                                     change_ins=self.change_ins,
                                                                     imgurl=short_url,
-                                                                    start_finish=self.time_diff_start_finish_td,
-                                                                    submit_finish=self.time_diff_submit_finish_td)
+                                                                    start_finish=time_diff_start_finish_td,
+                                                                    submit_finish=time_diff_submit_finish_td)
 
                         logger.debug("Sent image URL and completed prompt.")
                     else:
@@ -516,32 +505,18 @@ class MidjourneyTurbo(Plugin):
                     logger.error(f"Received error message: {task_data}")
                 else:  # 正常的JSON响应
                     if task_data["failReason"] is None:
-                        com_reply = Reply()
-                        com_reply.type = self.type
-
                         # 处理图片链接
-                        if self.split_url:
-                            split_url = task_data["imageUrl"].split('/')
-                            new_url = '/'.join(split_url[0:3] + split_url[5:])
-                        else:
-                            new_url = task_data["imageUrl"]
+                        new_url = self.generate_new_url(task_data=task_data)
 
                         # 生成短链接
                         short_url = self.get_short_url(short_url_api=self.short_url_api, url=new_url)
 
                         # 计算时间差
-                        self.time_diff_start_finish_td, self.time_diff_submit_finish_td = self.get_time_diff(task_data)
+                        time_diff_start_finish_td, time_diff_submit_finish_td = self.get_time_diff(task_data)
 
                         logger.debug("new_url: %s" % new_url)
 
-                        if self.num != 1:
-                            com_reply.content = new_url
-                        else:
-                            # 下载并压缩图片
-                            image_path = download_and_compress_image(new_url, imagine_data['result'])
-                            image_storage = open(image_path, 'rb')
-                            com_reply.content = image_storage
-
+                        com_reply = self.create_reply(new_url=new_url, data=imagine_data)
                         # 发送回复
                         send_with_retry(self.comapp, com_reply, e_context)
 
@@ -550,8 +525,8 @@ class MidjourneyTurbo(Plugin):
                         # 设置回复内容
                         reply.content = self.complete_prompt.format(id=imagine_data["result"],
                                                                     change_ins=self.change_ins, imgurl=short_url,
-                                                                    start_finish=self.time_diff_start_finish_td,
-                                                                    submit_finish=self.time_diff_submit_finish_td)
+                                                                    start_finish=time_diff_start_finish_td,
+                                                                    submit_finish=time_diff_submit_finish_td)
 
                         logger.debug("Sent image URL and completed prompt.")
                     else:
@@ -603,32 +578,19 @@ class MidjourneyTurbo(Plugin):
                     else:
                         # 正常的JSON响应
                         if task_data["failReason"] is None:
-                            com_reply = Reply()
-                            com_reply.type = self.type
-
                             # 处理图片链接
-                            if self.split_url:
-                                split_url = task_data["imageUrl"].split('/')
-                                new_url = '/'.join(split_url[0:3] + split_url[5:])
-                            else:
-                                new_url = task_data["imageUrl"]
+                            new_url = self.generate_new_url(task_data=task_data)
 
                             # 生成短链接
                             short_url = self.get_short_url(short_url_api=self.short_url_api, url=new_url)
 
                             # 计算时间差
-                            self.time_diff_start_finish_td, self.time_diff_submit_finish_td = self.get_time_diff(
+                            time_diff_start_finish_td, time_diff_submit_finish_td = self.get_time_diff(
                                 task_data)
 
                             logger.debug("new_url: %s" % new_url)
 
-                            if self.num != 1:
-                                com_reply.content = new_url
-                            else:
-                                # 下载并压缩图片
-                                image_path = download_and_compress_image(new_url, blend_data['result'])
-                                image_storage = open(image_path, 'rb')
-                                com_reply.content = image_storage
+                            com_reply = self.create_reply(new_url=new_url, data=blend_data)
 
                             # 发送回复
                             send_with_retry(self.comapp, com_reply, e_context)
@@ -638,8 +600,8 @@ class MidjourneyTurbo(Plugin):
                             reply.content = self.complete_prompt.format(id=blend_data["result"],
                                                                         change_ins=self.change_ins,
                                                                         imgurl=short_url,
-                                                                        start_finish=self.time_diff_start_finish_td,
-                                                                        submit_finish=self.time_diff_submit_finish_td)
+                                                                        start_finish=time_diff_start_finish_td,
+                                                                        submit_finish=time_diff_submit_finish_td)
                             logger.debug("Sent image URL and completed prompt.")
                         else:
                             reply.type = ReplyType.TEXT
@@ -764,3 +726,24 @@ class MidjourneyTurbo(Plugin):
         """, (trial_count, trial_date, user_id))
         db_conn.commit()
         return True, True, trial_count
+
+    def generate_new_url(self, task_data):
+        if self.split_url:
+            split_url = task_data["imageUrl"].split('/')
+            new_url = '/'.join(split_url[0:3] + split_url[5:])
+        else:
+            new_url = task_data["imageUrl"]
+        return new_url
+
+    def create_reply(self, new_url, data):
+        com_reply = Reply()
+        com_reply.type = self.type
+
+        if self.num != 1:
+            com_reply.content = new_url
+        else:
+            # 下载并压缩图片
+            image_path = download_and_compress_image(new_url, data['result'])
+            image_storage = open(image_path, 'rb')
+            com_reply.content = image_storage
+        return com_reply
