@@ -376,7 +376,7 @@ class MidjourneyTurbo(Plugin):
                         new_url = self.generate_new_url(task_data=task_data)
 
                         # 生成短URL
-                        short_url = self.get_short_url(short_url_api=self.short_url_api, url=task_data)
+                        short_url = self.get_short_url(short_url_api=self.short_url_api, url=new_url)
 
                         # 计算时间差
                         time_diff_start_finish_td, time_diff_submit_finish_td = self.get_time_diff(task_data)
