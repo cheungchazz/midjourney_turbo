@@ -24,6 +24,7 @@ from bridge.reply import Reply, ReplyType
 from channel.wechatcom.wechatcomapp_channel import WechatComAppChannel
 from channel.wechat.wechat_channel import WechatChannel
 from channel.wechatmp.wechatmp_channel import WechatMPChannel
+from channel.wechatnt.ntchat_channel import NtchatChannel
 from config import conf
 import plugins
 from plugins import *
@@ -45,6 +46,10 @@ def create_channel_object():
         return WechatMPChannel(), ReplyType.IMAGE_URL, 2
     elif channel_type == 'wechatcom_app':
         return WechatComAppChannel(), ReplyType.IMAGE_URL, 2
+    # elif channel_type == 'wework':
+    #     return WeworkChannel(), ReplyType.IMAGE_URL, 2
+    elif channel_type == 'ntchat':
+        return NtchatChannel(), ReplyType.IMAGE_URL, 2
     else:
         return WechatChannel(), ReplyType.IMAGE, 1
 
