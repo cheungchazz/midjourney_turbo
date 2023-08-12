@@ -45,8 +45,12 @@ def create_channel_object():
         return WechatMPChannel(), ReplyType.IMAGE_URL, 2
     elif channel_type == 'wechatcom_app':
         return WechatComAppChannel(), ReplyType.IMAGE_URL, 2
-    # elif channel_type == 'wework':
-    #     return WeworkChannel(), ReplyType.IMAGE_URL, 2
+    elif channel_type == 'wework':
+        from channel.wework.wework_channel import WeworkChannel
+        return WeworkChannel(), ReplyType.IMAGE_URL, 2
+    elif channel_type == 'weworktop':
+        from channel.weworktop.weworktop_channel import WeworkChannel
+        return WeworkChannel(), ReplyType.IMAGE_URL, 2
     elif channel_type == 'ntchat':
         from channel.wechatnt.ntchat_channel import NtchatChannel
         return NtchatChannel(), ReplyType.IMAGE_URL, 2
