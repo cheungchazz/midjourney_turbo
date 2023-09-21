@@ -294,6 +294,7 @@ class MidjourneyTurbo(Plugin):
             # 移除图片插入标记
             prompt = prompt.replace(self.image_ins, "")
             prompt = generate_prompt(content=prompt) if self.gpt_optimized else prompt
+            prompt += commands
             # 将params添加到用户的参数缓存中
             self.params_cache[user_id] = {'image_params': params}
 
