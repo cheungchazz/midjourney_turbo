@@ -84,11 +84,3 @@
 
 
 ------
-
-
-
-**如果本插件好用，请给star，由于Bot被举报，所以插件停止更新，拜拜~**
-
-![](https://github.com/chazzjimel/chatgpt-on-wechat/blob/master/docs/images/bot.jpg)
-
-添加bot，发送  **进群：【一胜Net】AIGC交流** 给bot即可
